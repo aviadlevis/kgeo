@@ -16,9 +16,9 @@ import mpmath
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import time
-from kerr_raytracing_utils import *
-from gsl_ellip_binding import ellip_pi_gsl
-import h5py
+from kgeo.kerr_raytracing_utils import *
+from kgeo.gsl_ellip_binding import ellip_pi_gsl
+import xarray as xr
 
 ROUT = 1000 #4.e10 # sgra distance in M
 NGEO = 200
@@ -37,8 +37,7 @@ ellippi_arr_gsl = np.frompyfunc(ellip_pi_gsl,3,1)
 
 def raytrace_ana(a=0.94, th_o=20*np.pi/180., r_o=ROUT,
                  alpha=np.linspace(-8,8,NPIX), beta=0*np.ones(NPIX), ngeo=NGEO,
-                 do_phi_and_t=True,
-                 savedata=False, plotdata=True):
+                 do_phi_and_t=True, plotdata=True):
     # checks
     if not (isinstance(a,float) and (0<=a<1)):
         raise Exception("a should be float in range [0,1)")
@@ -127,21 +126,40 @@ def raytrace_ana(a=0.94, th_o=20*np.pi/180., r_o=ROUT,
 
     # put phi in range (-pi,pi)
     #ph_s = np.mod(ph_s - np.pi, 2*np.pi) - np.pi
-
-    if savedata and do_phi_and_t:
-        print('saving data...')
-        try:
-            savegeos(a,th_o,r_o,alpha, beta,n_tot,Nmax_eq,tausteps,t_s,r_s,th_s,ph_s,sig_s)
-        except:
-            print("Error saving to file!")
+    output = xr.Dataset(
+        data_vars={
+            'spin': a, 
+            'inc': th_o,
+            'alpha': ('pix', alpha),
+            'beta': ('pix', beta),
+            't': (['geo', 'pix'], t_s),
+            'r': (['geo', 'pix'], r_s),
+            'theta': (['geo', 'pix'], th_s),
+            'phi': (['geo', 'pix'], ph_s),
+            'affine': (['geo', 'pix'], sig_s),
+            'mino': (['geo', 'pix'], tausteps),
+            'x': (['geo', 'pix'],  r_s * np.cos(ph_s) * np.sin(th_s)),
+            'y': (['geo', 'pix'],  r_s * np.sin(ph_s) * np.sin(th_s)),
+            'z': (['geo', 'pix'],  r_s * np.cos(th_s)),
+            'r_o': r_o
+        }
+    )
+    
+    piecwise_dist = np.sqrt(output.x.diff('geo')**2 + output.y.diff('geo')**2 + output.z.diff('geo')**2)
+    piecwise_dist = xr.concat((xr.zeros_like(output.x.isel(geo=0)), piecwise_dist), dim='geo').fillna(0.0)
+    output = output.assign(deltas=(['pix', 'geo'], piecwise_dist))
+    output = output.transpose('pix', 'geo')
+    
     if plotdata and do_phi_and_t:
         print('plotting data...')
         plotgeos(a,th_o,r_o,Nmax_eq,r_s,th_s,ph_s)
 
     print('done!')
-    return(n_tot,Nmax_eq,tausteps,t_s,r_s,th_s,ph_s,sig_s)
+    return output
+    # return(n_tot,Nmax_eq,tausteps,t_s,r_s,th_s,ph_s,sig_s)
 
 def savegeos(a,th_o,r_o,alpha,beta,n_tot,Nmax_eq,tausteps,t_s,r_s,th_s,ph_s,sig_s):
+    import h5py
     fname = 'a%0.2f_th%0.2f_geo.h5'%(a,th_o*180/np.pi)
     hf = h5py.File(fname,'w')
     hf.create_dataset('spin',data=a)

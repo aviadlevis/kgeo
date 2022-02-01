@@ -14,7 +14,7 @@ import scipy.special as sp
 # Load the gsl library
 # the path to gsl on my system /usr/lib/x86_64-linux-gnu/libgsl.so,
 # but CDLL finds it automatically :)
-native = CDLL('libgsl.so')
+native = CDLL('libgsl.so.23')
 
 ###########################################
 ## PRECISION STUFF

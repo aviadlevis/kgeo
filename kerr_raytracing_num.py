@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from scipy.integrate import solve_ivp
 
-from kerr_raytracing_utils import *
-from gsl_ellip_binding import ellip_pi_gsl
+from kgeo.kerr_raytracing_utils import *
+from kgeo.gsl_ellip_binding import ellip_pi_gsl
 
 ROUT = 1000 #4.e10 # sgra distance in M
 NGEO = 100

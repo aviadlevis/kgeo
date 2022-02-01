@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.special as sp
 import mpmath
-from gsl_ellip_binding import ellip_pi_gsl
+from kgeo.gsl_ellip_binding import ellip_pi_gsl
 
 MINSPIN = 1.e-6 # minimum spin for full formulas to work before taking limits. TODO check!
 EP = 1.e-10
