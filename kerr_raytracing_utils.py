@@ -87,7 +87,7 @@ class Geodesics(object):
     def sig_s(self):
         return self.affine_times
 
-    def plotgeos(self,xlim=12,rmax=15,nplot=None,ngeoplot=50,plot_disk=True,
+    def plotgeos(self, xlim=12,rmax=15,nplot=None,ngeoplot=50,plot_disk=True,
                  plot_inside_cc=True,plot_outside_cc=True):
 
         a = self.a
@@ -151,7 +151,7 @@ class Geodesics(object):
             xs = x_s[:,mask];ys = y_s[:,mask];zs = z_s[:,mask];
             rs = r_s[:,mask];tau = tausteps[:,mask]
             #trim = xs.shape[-1]//int(np.floor(ngeoplot*xs.shape[-1]/self.npix))
-            trim = int(xs.shape[-1]/ngeoplot)
+            trim = max(int(xs.shape[-1]/ngeoplot), 1)
             if xs.shape[-1] < 5 or j>=4:
                 geos = range(xs.shape[-1])
             else:
@@ -189,32 +189,32 @@ class Geodesics(object):
         #hf.create_dataset('eq_crossings',data=nmax_eq)
         #hf.create_dataset('frac_orbits',data=n_tot)
         hf.close()
-	
-	def get_dataset(self, path='./'):
-		dataset = xr.Dataset(
-			data_vars={
-				'spin': self.a, 
-	            'inc': self.th_o,
-	            'alpha': ('pix', self.alpha),
-	            'beta': ('pix', self.beta),
-	            't': (['geo', 'pix'], self.t_s),
-	            'r': (['geo', 'pix'], self.r_s),
-	            'theta': (['geo', 'pix'], self.th_s),
-	            'phi': (['geo', 'pix'], self.ph_s),
-	            'affine': (['geo', 'pix'], self.sig_s),
-	            'mino': (['geo', 'pix'], self.tausteps),
-	            'x': (['geo', 'pix'],  self.r_s * np.cos(self.ph_s) * np.sin(self.th_s)),
-	            'y': (['geo', 'pix'],  self.r_s * np.sin(self.ph_s) * np.sin(self.th_s)),
-	            'z': (['geo', 'pix'],  self.r_s * np.cos(self.th_s)),
-	            'r_o': self.r_o
-	        }
-	    )
-		piecwise_dist = np.sqrt(dataset.x.diff('geo')**2 + dataset.y.diff('geo')**2 + dataset.z.diff('geo')**2)
-		piecwise_dist = xr.concat((xr.zeros_like(dataset.x.isel(geo=0)), piecwise_dist), dim='geo').fillna(0.0)
-		dataset = dataset.assign(deltas=(['pix', 'geo'], piecwise_dist))
-		dataset = dataset.transpose('pix', 'geo')
-		return dataset
-		
+        
+    def get_dataset(self):
+        dataset = xr.Dataset(
+            data_vars={
+                'spin': self.a,
+                'inc': self.th_o,
+                'alpha': ('pix', self.alpha),
+                'beta': ('pix', self.beta),
+                't': (['geo', 'pix'], self.t_s),
+                'r': (['geo', 'pix'], self.r_s),
+                'theta': (['geo', 'pix'], self.th_s),
+                'phi': (['geo', 'pix'], self.ph_s),
+                'affine': (['geo', 'pix'], self.sig_s),
+                'mino': (['geo', 'pix'], self.tausteps),
+                'x': (['geo', 'pix'],  self.r_s * np.cos(self.ph_s) * np.sin(self.th_s)),
+                'y': (['geo', 'pix'],  self.r_s * np.sin(self.ph_s) * np.sin(self.th_s)),
+                'z': (['geo', 'pix'],  self.r_s * np.cos(self.th_s)),
+                'r_o': self.r_o
+            }
+        )
+        piecwise_dist = np.sqrt(dataset.x.diff('geo')**2 + dataset.y.diff('geo')**2 + dataset.z.diff('geo')**2)
+        piecwise_dist = xr.concat((xr.zeros_like(dataset.x.isel(geo=0)), piecwise_dist), dim='geo').fillna(0.0)
+        dataset = dataset.assign(deltas=piecwise_dist)
+        dataset = dataset.transpose('pix', 'geo')
+        return dataset
+
 def angular_turning(a, th_o, lam, eta):
     """Calculate angular turning theta_pm points for a geodisic with conserved (lam,eta)"""
 
@@ -568,7 +568,7 @@ def n_equatorial_crossings(a, th_o, alpha, beta, tau):
     F_o = sp.ellipkinc(np.arcsin(np.cos(th_o)/np.sqrt(u_plus)), uratio) # gives NaN for eta<0
     K = sp.ellipk(uratio) # gives NaN for eta<0
     nmax_eq = ((tau*np.sqrt(-a2u_minus.astype(complex)) + s_o*F_o) / (2*K))  + 1
-    nmax_eq[beta>=0] -= 1
+    nmax_eq[eta>=0] -= 1
     nmax_eq = np.floor(np.real(nmax_eq.astype(complex)))
     nmax_eq[np.isnan(nmax_eq)] = 0
 
