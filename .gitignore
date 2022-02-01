@@ -1,0 +1,10 @@
+*__pycache__*
+*.pyc
+*~
+*.so
+*.h5
+*.fits
+
+gsl_ellip.c
+toms_ellip_binding.py
+toms5777*
