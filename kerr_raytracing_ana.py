@@ -55,7 +55,7 @@ def raytrace_ana(a=SPIN,
                  image_coords = [alpha_default, beta_default],
                  ngeo=NGEO,
                  do_phi_and_t=True,
-                 savedata=False, plotdata=True):
+                 savedata=False, plotdata=True, verbose=True):
 
     tstart = time.time()
 
@@ -74,7 +74,7 @@ def raytrace_ana(a=SPIN,
     if len(alpha) != len(beta):
         raise Exception("alpha, beta are different lengths!")
 
-    print('calculating preliminaries...')
+    if verbose: print('calculating preliminaries...')
 
     # horizon radii
     rplus  = 1 + np.sqrt(1-a**2)
@@ -107,20 +107,20 @@ def raytrace_ana(a=SPIN,
     tausteps = np.linspace(0, MAXTAUFRAC*tau_tot, ngeo)
 
     # integrate in theta
-    print('integrating in theta...',end="\r")
+    if verbose: print('integrating in theta...',end="\r")
     start = time.time()
     (th_s, G_ph, G_t) = th_integrate(a,th_o,s_o,lam,eta,u_plus,u_minus,tausteps,
                                      do_phi_and_t=do_phi_and_t)
     stop = time.time()
-    print('integrating in theta...%0.2f s'%(stop-start))
+    if verbose: print('integrating in theta...%0.2f s'%(stop-start))
 
     # integrate in r1
-    print('integrating in r...',end="\r")
+    if verbose: print('integrating in r...',end="\r")
     start = time.time()
     (r_s, I_ph, I_t, I_sig) = r_integrate(a,r_o,lam,eta, r1,r2,r3,r4,tausteps,
                                           do_phi_and_t=do_phi_and_t)
     stop = time.time()
-    print('integrating in r...%0.2f s'%(stop-start))
+    if verbose: print('integrating in r...%0.2f s'%(stop-start))
 
     # combine integrals to get phi, t, and sigma as a function of time
     sig_s = 0 + I_sig + a**2 * G_t # GL19a 15
@@ -148,7 +148,7 @@ def raytrace_ana(a=SPIN,
             print("Error plotting data!")
 
     tstop = time.time()
-    print('done!  ', tstop-tstart, ' seconds!')
+    if verbose: print('done!  ', tstop-tstart, ' seconds!')
     return geos
 
 
