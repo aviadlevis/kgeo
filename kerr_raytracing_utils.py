@@ -647,7 +647,7 @@ def n_equatorial_crossings(a, th_o, alpha, beta, tau):
         betamask = (beta_reg<=0)
         if np.any(betamask):
             neq_reg[:,betamask] = (np.floor((tau_reg*np.sqrt(-a2u_minus) - F0) / (2*K)))[:,betamask]
-    nmax_eq[beta>=0] -= 1
+        if np.any(~betamask):
             neq_reg[:,~betamask] = (np.floor((tau_reg*np.sqrt(-a2u_minus) + F0) / (2*K)) - 1)[:,~betamask]
 
     # return data
