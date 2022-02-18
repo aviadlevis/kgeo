@@ -5,7 +5,11 @@ import matplotlib.pyplot as plt
 import h5py
 import xarray as xr
 
-MINSPIN = 1.e-6 # minimum spin for full formulas to work before taking limits. TODO check!
+# minimum spin for full formulas to work before taking limits.
+# changed to 1.e-4 to be conservative, 1.e-6 was giving issues on-axis 
+MINSPIN = 1.e-4
+
+# small number
 EP = 1.e-12
 
 class Geodesics(object):
@@ -59,6 +63,7 @@ class Geodesics(object):
     @property
     def nmax_eq(self): # number of equatorial crossings
         nmax_eq = n_equatorial_crossings(self.a, self.th_o, self.alpha, self.beta, self.tautot)
+        #nmax_eq = nmax_equatorial(self.a, self.r_o, self.th_o, self.alpha, self.beta)
         return nmax_eq
 
     # geodeiscs
@@ -88,16 +93,22 @@ class Geodesics(object):
         return self.affine_times
 
     def plotgeos(self, xlim=12,rmax=15,nplot=None,ngeoplot=50,plot_disk=True,
-                 plot_inside_cc=True,plot_outside_cc=True):
+                 plot_inside_cc=True, plot_outside_cc=True,
+                 n_label='equatorial'):
 
         a = self.a
         th_o = self.th_o
-        nmax_eq = self.nmax_eq
         r_s = self.r_s
         th_s = self.th_s
         ph_s = self.ph_s
         tausteps = self.tausteps
 
+        # numbering by n
+        if n_label=='poloidal':
+            nmax_eq = np.floor(self.n_poloidal[-1])
+        else:
+            nmax_eq = self.nmax_eq
+            
         # horizon
         rplus  = 1 + np.sqrt(1-a**2)
 
@@ -527,20 +538,50 @@ def n_poloidal_orbits(a, th_o, alpha, beta, tau):
         raise Exception("a should be a float in range [0,1)")
     if not (isinstance(th_o,float) and (0<th_o<=np.pi/2.)):
         raise Exception("th_o should be a float in range (0,pi/2)")
+    if not isinstance(alpha, np.ndarray): alpha = np.array([alpha]).flatten()
+    if not isinstance(beta, np.ndarray): beta = np.array([beta]).flatten()
     if len(alpha) != len(beta):
-        raise Exception("alpha, beta are different shapes!")
-    if not(tau.shape[1]==len(alpha)):
+        raise Exception("alpha, beta are different lengths!")
+        
+    # TODO hacky way to handle different shape tau arrays
+    if len(tau.shape)==1:
+        tau = tau.reshape(1,tau.shape[0])
+        alltau = False
+    else:
+        alltau = True     
+    if not(tau.shape[1]==len(alpha)): #TODO
         raise Exception("tau has incompatible shape in n_poloidal_orbits!")
 
     lam = -alpha*np.sin(th_o)
     eta = (alpha**2 - a**2)*np.cos(th_o)**2 + beta**2
 
-    (u_plus, u_minus, uratio, a2u_minus) = uplus_uminus(a,th_o,lam,eta)
+    # output array
+    n_poloidal = np.empty(tau.shape)
 
-    K = sp.ellipk(uratio) # gives NaN for eta<0
-    n_poloidal = (np.sqrt(-a2u_minus.astype(complex))*tau)/(4*K)
-    n_poloidal = np.real(n_poloidal.astype(complex))
+    # vortical motion
+    vortmask = (eta<=0)
+    n_poloidal[:,vortmask] = -2
 
+    # regular motion
+    if np.any(~vortmask):
+
+        lam_reg = lam[~vortmask]
+        eta_reg = eta[~vortmask]
+        tau_reg = tau[:,~vortmask]
+
+                    
+        (u_plus, u_minus, uratio, a2u_minus) = uplus_uminus(a,th_o,lam_reg,eta_reg)
+
+        K = sp.ellipk(uratio) # gives NaN for eta<0
+        npol_reg = (np.sqrt(-a2u_minus.astype(complex))*tau_reg)/(4*K)
+        npol_reg = np.real(npol_reg.astype(complex))
+
+    # return data
+    n_poloidal[:,~vortmask] = npol_reg
+    
+    if not alltau:
+        n_poloidal = n_poloidal[0]
+        
     return n_poloidal
 
 def n_equatorial_crossings(a, th_o, alpha, beta, tau):
@@ -551,28 +592,71 @@ def n_equatorial_crossings(a, th_o, alpha, beta, tau):
     if not (isinstance(a,float) and (0<=a<1)):
         raise Exception("a should be a float in range [0,1)")
     if not (isinstance(th_o,float) and (0<th_o<=np.pi/2.)):
-        raise Exception("th_o should be a float in range (0,pi/2)")
+        raise Exception("th_o should be a float in range (0,pi/2]")
+
     if not isinstance(alpha, np.ndarray): alpha = np.array([alpha]).flatten()
     if not isinstance(beta, np.ndarray): beta = np.array([beta]).flatten()
     if len(alpha) != len(beta):
-        raise Exception("alpha, beta are different shapes!")
-    if not(tau.shape[-1]==len(alpha)):
-        raise Exception("tau has incompatible shape in n_equatorial_crossings!")
+        raise Exception("alpha, beta are different lengths!")
 
+    # TODO hacky way to handle different shape tau arrays
+    if len(tau.shape)==1:
+        tau = tau.reshape(1,tau.shape[0])
+        alltau = False
+    else:
+        alltau = True     
+    if not(tau.shape[1]==len(alpha)): #TODO
+        raise Exception("tau has incompatible shape in n_poloidal_orbits!")
+        
+    # conserved quantities
     lam = -alpha*np.sin(th_o)
     eta = (alpha**2 - a**2)*np.cos(th_o)**2 + beta**2
+    
+    # output array
+    n_equatorial = np.empty(tau.shape)
 
-    (u_plus, u_minus, uratio, a2u_minus) = uplus_uminus(a,th_o,lam,eta)
+    # vortical motion
+    vortmask = (eta<=0)
+    n_equatorial[:,vortmask] = -2
 
-    s_o = my_sign(beta)  # sign of final angular momentum
-    F_o = sp.ellipkinc(np.arcsin(np.cos(th_o)/np.sqrt(u_plus)), uratio) # gives NaN for eta<0
-    K = sp.ellipk(uratio) # gives NaN for eta<0
-    nmax_eq = ((tau*np.sqrt(-a2u_minus.astype(complex)) + s_o*F_o) / (2*K))  + 1
-    nmax_eq[eta>=0] -= 1
-    nmax_eq = np.floor(np.real(nmax_eq.astype(complex)))
-    nmax_eq[np.isnan(nmax_eq)] = 0
+    # regular motion
+    if np.any(~vortmask):
 
-    return nmax_eq
+        lam_reg = lam[~vortmask]
+        eta_reg = eta[~vortmask]
+        beta_reg = beta[~vortmask]
+        tau_reg = tau[:,~vortmask]
+
+                       
+        # angular turning points
+        (u_plus, u_minus, uratio, a2u_minus) = uplus_uminus(a,th_o,lam_reg,eta_reg)
+
+        # equation 12 for F0
+        # checks on xFarg should be handled in uplus_uminus function
+        xFarg = np.cos(th_o)/np.sqrt(u_plus)
+        F0 = sp.ellipkinc(np.arcsin(xFarg), uratio)
+
+        # equation 17 for K
+        K = sp.ellipkinc(0.5*np.pi, uratio)
+
+        #Equation 81 for the number of maximual crossings Nmax_eq
+        #Note that eqn C8 of Gralla, Lupsasca, Marrone has a typo!
+        #using sign(0) = 1
+        neq_reg = np.empty(tau_reg.shape)
+
+        betamask = (beta_reg<=0)
+        if np.any(betamask):
+            neq_reg[:,betamask] = (np.floor((tau_reg*np.sqrt(-a2u_minus) - F0) / (2*K)))[:,betamask]
+    nmax_eq[beta>=0] -= 1
+            neq_reg[:,~betamask] = (np.floor((tau_reg*np.sqrt(-a2u_minus) + F0) / (2*K)) - 1)[:,~betamask]
+
+    # return data
+    n_equatorial[:,~vortmask] = neq_reg
+
+    if not alltau:
+        n_equatorial = n_equatorial[0]
+            
+    return n_equatorial
 
 def is_outside_crit(a, th_o, alpha, beta):
     """is the point alpha, beta outside the critical curve?"""

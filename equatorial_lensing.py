@@ -8,7 +8,7 @@ from scipy.optimize import brentq
 from scipy.interpolate import interp1d
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from kerr_raytracing_utils import my_cbrt, radial_roots, mino_total, is_outside_crit, uplus_uminus
+from kerr_raytracing_utils import my_cbrt, radial_roots, mino_total, is_outside_crit, uplus_uminus, n_equatorial_crossings, n_poloidal_orbits
 from kerr_raytracing_ana import r_integrate
 import ehtim.parloop as parloop
 import ehtim.observing.obs_helpers as obsh
@@ -21,6 +21,7 @@ import os
 INF = 1.e50
 R0 = np.infty
 NPROC = 10
+
 
 def nmax_equatorial(a, r_o, th_o, alpha, beta):
     """Return the maximum number of equatorial crossings"""
@@ -37,57 +38,53 @@ def nmax_equatorial(a, r_o, th_o, alpha, beta):
     if not isinstance(beta, np.ndarray): beta = np.array([beta]).flatten()
     if len(alpha) != len(beta):
         raise Exception("alpha, beta are different lengths!")
-
+    
     # conserved quantities
     lam = -alpha*np.sin(th_o)
     eta = (alpha**2 - a**2)*np.cos(th_o)**2 + beta**2
+        
+    # radial roots
+    (r1,r2,r3,r4,rclass) = radial_roots(a,lam,eta)
 
-    # output arrays
-    Nmax = np.empty(alpha.shape)
+    # total Mino time
+    Imax = mino_total(a, r_o, eta, r1, r2, r3, r4)
 
-    # vortical motion
-    vortmask = (eta<=0)
-    Nmax[vortmask] = -2
+    # number of crossings
+    nmax = n_equatorial_crossings(a,th_o,alpha,beta,Imax)
+    
+    return nmax
 
-    # regular motion
-    if np.any(~vortmask):
+def nmax_poloidal(a, r_o, th_o, alpha, beta):
+    """Return the maximum number of poloidal orbits"""
 
-        lam_reg = lam[~vortmask]
-        eta_reg = eta[~vortmask]
-        beta_reg = beta[~vortmask]
+    # checks
+    if not (isinstance(a,float) and (0<=a<1)):
+        raise Exception("a should be a float in range [0,1)")
+    if not (isinstance(r_o,float) and (r_o>=100)):
+        raise Exception("r_o should be a float > 100")
+    if not (isinstance(th_o,float) and (0<th_o<=np.pi/2.)):
+        raise Exception("th_o should be a float in range (0,pi/2]")
 
-        # angular turning points
-        (u_plus, u_minus, uratio, a2u_minus) = uplus_uminus(a,th_o,lam_reg,eta_reg)
+    if not isinstance(alpha, np.ndarray): alpha = np.array([alpha]).flatten()
+    if not isinstance(beta, np.ndarray): beta = np.array([beta]).flatten()
+    if len(alpha) != len(beta):
+        raise Exception("alpha, beta are different lengths!")
+    
+    # conserved quantities
+    lam = -alpha*np.sin(th_o)
+    eta = (alpha**2 - a**2)*np.cos(th_o)**2 + beta**2
+        
+    # radial roots
+    (r1,r2,r3,r4,rclass) = radial_roots(a,lam,eta)
 
-        # equation 12 for F0
-        # checks on xFarg should be handled in uplus_uminus function
-        xFarg = np.cos(th_o)/np.sqrt(u_plus)
-        F0 = sp.ellipkinc(np.arcsin(xFarg), uratio)
+    # total Mino time
+    Imax = mino_total(a, r_o, eta, r1, r2, r3, r4)
 
-        # equation 17 for K
-        K = sp.ellipkinc(0.5*np.pi, uratio)
+    # number of crossings
+    nmax = n_poloidal_orbits(a, th_o, alpha, beta, Imax)
+    
+    return nmax
 
-        # radial roots
-        (r1,r2,r3,r4,rclass) = radial_roots(a,lam_reg,eta_reg)
-
-        # total Mino time
-        Imax_reg = mino_total(a, r_o, eta_reg, r1, r2, r3, r4)
-
-        #Equation 81 for the number of maximual crossings Nmax_eq
-        #Note that eqn C8 of Gralla, Lupsasca, Marrone has a typo!
-        #using sign(0) = 1
-        Nmax_reg = np.empty(Imax_reg.shape)
-
-        betamask = (beta_reg<=0)
-        if np.any(betamask):
-            Nmax_reg[betamask] = (np.floor((Imax_reg*np.sqrt(-u_minus*a**2) - F0) / (2*K)))[betamask]
-        if np.any(~betamask):
-            Nmax_reg[~betamask] = (np.floor((Imax_reg*np.sqrt(-u_minus*a**2) + F0) / (2*K)) - 1)[~betamask]
-
-    # return data
-    Nmax[~vortmask] = Nmax_reg
-
-    return Nmax
 
 def r_equatorial(a, r_o, th_o, mbar, alpha, beta):
     """Return (r_s, Ir, Imax, Nmax) where
