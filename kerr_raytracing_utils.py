@@ -220,9 +220,7 @@ class Geodesics(object):
                 'r_o': self.r_o
             }
         )
-        piecwise_dist = np.sqrt(dataset.x.diff('geo')**2 + dataset.y.diff('geo')**2 + dataset.z.diff('geo')**2)
-        piecwise_dist = xr.concat((xr.zeros_like(dataset.x.isel(geo=0)), piecwise_dist), dim='geo').fillna(0.0)
-        dataset = dataset.assign(deltas=piecwise_dist)
+        
         dataset = dataset.transpose('pix', 'geo')
         return dataset
 
