@@ -201,27 +201,30 @@ class Geodesics(object):
         #hf.create_dataset('frac_orbits',data=n_tot)
         hf.close()
         
-    def get_dataset(self):
+    def get_dataset(self, num_alpha, num_beta):
+        r = self.r_s.reshape(-1, num_alpha, num_beta).T
+        theta = self.th_s.reshape(-1, num_alpha, num_beta).T
+        phi = self.ph_s.reshape(-1, num_alpha, num_beta).T
         dataset = xr.Dataset(
-            data_vars={
+            data_vars = {
                 'spin': self.a,
                 'inc': self.th_o,
-                'alpha': ('pix', self.alpha),
-                'beta': ('pix', self.beta),
-                't': (['geo', 'pix'], self.t_s),
-                'r': (['geo', 'pix'], self.r_s),
-                'theta': (['geo', 'pix'], self.th_s),
-                'phi': (['geo', 'pix'], self.ph_s),
-                'affine': (['geo', 'pix'], self.sig_s),
-                'mino': (['geo', 'pix'], self.tausteps),
-                'x': (['geo', 'pix'],  self.r_s * np.cos(self.ph_s) * np.sin(self.th_s)),
-                'y': (['geo', 'pix'],  self.r_s * np.sin(self.ph_s) * np.sin(self.th_s)),
-                'z': (['geo', 'pix'],  self.r_s * np.cos(self.th_s)),
-                'r_o': self.r_o
+                'r_o': self.r_o,
+                't': (['beta', 'alpha', 'geo'], self.t_s.reshape(-1, num_alpha, num_beta).T),
+                'affine': (['beta', 'alpha', 'geo'], self.sig_s.reshape(-1, num_alpha, num_beta).T),
+                'mino': (['beta', 'alpha', 'geo'], self.tausteps.reshape(-1, num_alpha, num_beta).T),
+                'r': (['beta', 'alpha', 'geo'], r),
+                'theta': (['beta', 'alpha', 'geo'], theta),
+                'phi': (['beta', 'alpha', 'geo'], phi),
+                'x': (['beta', 'alpha', 'geo'],  r * np.cos(phi) * np.sin(theta)),
+                'y': (['beta', 'alpha', 'geo'],  r * np.sin(phi) * np.sin(theta)),
+                'z': (['beta', 'alpha', 'geo'],  r * np.cos(theta)),
+            },
+            coords = {
+               'alpha': self.alpha.reshape(num_alpha, num_beta)[:, 0],
+               'beta': self.beta.reshape(num_alpha, num_beta)[0]
             }
         )
-        
-        dataset = dataset.transpose('pix', 'geo')
         return dataset
 
 def angular_turning(a, th_o, lam, eta):
