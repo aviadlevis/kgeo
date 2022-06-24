@@ -31,7 +31,7 @@ def nmax_equatorial(a, r_o, th_o, alpha, beta):
         raise Exception("a should be a float in range [0,1)")
     if not (isinstance(r_o,float) and (r_o>=100)):
         raise Exception("r_o should be a float > 100")
-    if not (isinstance(th_o,float) and (0<th_o<=np.pi/2.)):
+    if not (isinstance(th_o,float) and (0<=th_o<=np.pi/2.)):
         raise Exception("th_o should be a float in range (0,pi/2]")
 
     if not isinstance(alpha, np.ndarray): alpha = np.array([alpha]).flatten()
@@ -62,7 +62,7 @@ def nmax_poloidal(a, r_o, th_o, alpha, beta):
         raise Exception("a should be a float in range [0,1)")
     if not (isinstance(r_o,float) and (r_o>=100)):
         raise Exception("r_o should be a float > 100")
-    if not (isinstance(th_o,float) and (0<th_o<=np.pi/2.)):
+    if not (isinstance(th_o,float) and (0<=th_o<=np.pi/2.)):
         raise Exception("th_o should be a float in range (0,pi/2]")
 
     if not isinstance(alpha, np.ndarray): alpha = np.array([alpha]).flatten()
@@ -99,7 +99,7 @@ def r_equatorial(a, r_o, th_o, mbar, alpha, beta):
         raise Exception("a should be a float in range [0,1)")
     if not (isinstance(r_o,float) and (r_o>=100)):
         raise Exception("r_o should be a float > 100")
-    if not (isinstance(th_o,float) and (0<th_o<=np.pi/2.)):
+    if not (isinstance(th_o,float) and (0<=th_o<=np.pi/2.)):
         raise Exception("th_o should be a float in range (0,pi/2]")
     if not (isinstance(mbar,int) and (mbar>=0)):
         raise Exception("mbar should be an integer >=0!")
@@ -162,11 +162,11 @@ def r_equatorial(a, r_o, th_o, mbar, alpha, beta):
 
         betamask = (beta_reg<=0)
         if np.any(betamask):
-            Nmax_reg[betamask] = (np.floor((Imax_reg*np.sqrt(-u_minus*a**2) - F0) / (2*K)))[betamask]
-            Ir_reg[betamask] = ((2*m*K + F0)/np.sqrt(-u_minus*a**2))[betamask]
+            Nmax_reg[betamask] = (np.floor((Imax_reg*np.sqrt(-a2u_minus) - F0) / (2*K)))[betamask]
+            Ir_reg[betamask] = ((2*m*K + F0)/np.sqrt(-a2u_minus))[betamask]
         if np.any(~betamask):
-            Nmax_reg[~betamask] = (np.floor((Imax_reg*np.sqrt(-u_minus*a**2) + F0) / (2*K)) - 1)[~betamask]
-            Ir_reg[~betamask] = ((2*m*K - F0)/np.sqrt(-u_minus*a**2))[~betamask]
+            Nmax_reg[~betamask] = (np.floor((Imax_reg*np.sqrt(-a2u_minus) + F0) / (2*K)) - 1)[~betamask]
+            Ir_reg[~betamask] = ((2*m*K - F0)/np.sqrt(-a2u_minus))[~betamask]
 
         # calculate the emission radius given the elapsed mino time
         # TODO -- clean up hacky indexing here

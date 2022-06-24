@@ -12,6 +12,7 @@ MINSPIN = 1.e-4
 # small number
 EP = 1.e-12
 
+
 class Geodesics(object):
 
     def __init__(self,a, observer_coords, image_coords, mino_times, affine_times, geo_coords):
@@ -109,6 +110,9 @@ class Geodesics(object):
         else:
             nmax_eq = self.nmax_eq
             
+        # adjust numbering by one
+        nmax_eq += 1
+        
         # horizon
         rplus  = 1 + np.sqrt(1-a**2)
 
@@ -150,8 +154,13 @@ class Geodesics(object):
             nplot = range(nloop)
         else:
             nplot = np.array([nplot]).flatten()
+            
         for j in nplot:
-            mask = (nmax_eq==j)
+            if j==0:
+                mask = (nmax_eq==0) + (nmax_eq==-1)            
+            else:
+                mask = (nmax_eq==j)
+                
             if not plot_inside_cc: #TODO make nicer
                 mask *= (r_s[-1] > 10)
             if not plot_outside_cc:
@@ -159,11 +168,18 @@ class Geodesics(object):
             if np.sum(mask)==0: continue
 
             color = colors[j]
+            if j==-1: color=colors[0]
+            
             xs = x_s[:,mask];ys = y_s[:,mask];zs = z_s[:,mask];
             rs = r_s[:,mask];tau = tausteps[:,mask]
             #trim = xs.shape[-1]//int(np.floor(ngeoplot*xs.shape[-1]/self.npix))
-            trim = max(int(xs.shape[-1]/ngeoplot), 1)
-            if xs.shape[-1] < 5 or j>=4:
+            
+            if ngeoplot is not None:
+                trim = max(int(xs.shape[-1]/ngeoplot), 1)
+            else:
+                trim = 0
+
+            if (xs.shape[-1] < 5 or j>=4 or trim==0):
                 geos = range(xs.shape[-1])
             else:
                 geos = range(0,xs.shape[-1],trim)
@@ -233,7 +249,7 @@ def angular_turning(a, th_o, lam, eta):
     # checks
     if not (isinstance(a,float) and (0<=a<1)):
         raise Exception("a should be float in range [0,1)")
-    if not (isinstance(th_o,float) and (0<th_o<=np.pi/2.)):
+    if not (isinstance(th_o,float) and (0<=th_o<=np.pi/2.)):
         raise Exception("th_o should be float in range (0,pi/2)")
     if not isinstance(lam, np.ndarray): lam = np.array([lam]).flatten()
     if not isinstance(eta, np.ndarray): eta = np.array([eta]).flatten()
@@ -268,7 +284,7 @@ def uplus_uminus(a,th_o,lam,eta):
     # checks
     if not (isinstance(a,float) and (0<=a<1)):
         raise Exception("a should be a float in range [0,1)")
-    if not (isinstance(th_o,float) and (0<th_o<=np.pi/2.)):
+    if not (isinstance(th_o,float) and (0<=th_o<=np.pi/2.)):
         raise Exception("th_o should be a float in range (0,pi/2)")
     if not isinstance(lam, np.ndarray): lam = np.array([lam]).flatten()
     if not isinstance(eta, np.ndarray): eta = np.array([eta]).flatten()
@@ -537,7 +553,7 @@ def n_poloidal_orbits(a, th_o, alpha, beta, tau):
 
     if not (isinstance(a,float) and (0<=a<1)):
         raise Exception("a should be a float in range [0,1)")
-    if not (isinstance(th_o,float) and (0<th_o<=np.pi/2.)):
+    if not (isinstance(th_o,float) and (0<=th_o<=np.pi/2.)):
         raise Exception("th_o should be a float in range (0,pi/2)")
     if not isinstance(alpha, np.ndarray): alpha = np.array([alpha]).flatten()
     if not isinstance(beta, np.ndarray): beta = np.array([beta]).flatten()
@@ -592,7 +608,7 @@ def n_equatorial_crossings(a, th_o, alpha, beta, tau):
     # checks
     if not (isinstance(a,float) and (0<=a<1)):
         raise Exception("a should be a float in range [0,1)")
-    if not (isinstance(th_o,float) and (0<th_o<=np.pi/2.)):
+    if not (isinstance(th_o,float) and (0<=th_o<=np.pi/2.)):
         raise Exception("th_o should be a float in range (0,pi/2]")
 
     if not isinstance(alpha, np.ndarray): alpha = np.array([alpha]).flatten()
@@ -665,7 +681,7 @@ def is_outside_crit(a, th_o, alpha, beta):
     # checks
     if not (isinstance(a,float) and (0<=a<1)):
         raise Exception("a should be a float in range [0,1)")
-    if not (isinstance(th_o,float) and (0<th_o<=np.pi/2.)):
+    if not (isinstance(th_o,float) and (0<=th_o<=np.pi/2.)):
         raise Exception("th_o should be a float in range (0,pi/2)")
     if not isinstance(alpha, np.ndarray): alpha = np.array([alpha]).flatten()
     if not isinstance(beta, np.ndarray): beta = np.array([beta]).flatten()
@@ -730,6 +746,7 @@ def my_sign(x):
     #out[x>0] = 1
     out[x<0] = -1
     return out
+
 
 
 # def intersect_plane(th_n, ph_n, r_s, th_s, ph_s):
