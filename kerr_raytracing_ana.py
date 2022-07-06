@@ -121,12 +121,12 @@ def raytrace_ana(a=SPIN,
     if verbose: print('integrating in theta...%0.2f s'%(stop-start))
 
     # integrate in r1
-    print('integrating in r...',end="\r")
+    if verbose: print('integrating in r...',end="\r")
     start = time.time()
     (r_s, I_ph, I_t, I_sig) = r_integrate(a,r_o,lam,eta, r1,r2,r3,r4,tausteps,
                                           do_phi_and_t=do_phi_and_t)
     stop = time.time()
-    print('integrating in r...%0.2f s'%(stop-start))
+    if verbose: print('integrating in r...%0.2f s'%(stop-start))
 
     # combine integrals to get phi, t, and sigma as a function of time
     sig_s = 0 + I_sig + a**2 * G_t # GL19a 15
