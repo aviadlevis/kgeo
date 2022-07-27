@@ -230,6 +230,24 @@ def rho_of_req(a, th0, req, mbar=0, varphis=np.linspace(-180,179,360)*np.pi/180)
     betas = np.sin(varphis)*rhos
     return(varphis,rhos,alphas, betas)
 
+def rho_of_req_single(a, th0, req, varphi, mbar=0):
+
+
+    # bounding ranges eyeballed from Gralla+Lupsasca Fig 6
+    if mbar==0:
+        rhomin = 0
+        rhomax = req + 5
+    elif mbar==1:
+        rhomin = 0
+        rhomax = 100
+    else:
+        rhomin=1
+        rhomax=10
+
+    rho = brentq(objfunc, rhomin, rhomax, args=(varphi, a, th0, req, mbar))
+
+    return rho
+    
 def critical_curve(a, th0, n=100000):
     """returns parametrized critical curve (alpha,beta) array with n points
        won't work for a=0 exactly"""
