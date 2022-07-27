@@ -8,8 +8,8 @@ from scipy.optimize import brentq
 from scipy.interpolate import interp1d
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from kerr_raytracing_utils import my_cbrt, radial_roots, mino_total, is_outside_crit, uplus_uminus, n_equatorial_crossings, n_poloidal_orbits
-from kerr_raytracing_ana import r_integrate
+from kgeo.kerr_raytracing_utils import my_cbrt, radial_roots, mino_total, is_outside_crit, uplus_uminus, n_equatorial_crossings, n_poloidal_orbits
+from kgeo.kerr_raytracing_ana import r_integrate
 import ehtim.parloop as parloop
 import ehtim.observing.obs_helpers as obsh
 from multiprocessing import cpu_count, Pool
@@ -212,8 +212,7 @@ def objfunc(rho, varphi, a, th0, r_target, mbar=0):
 
     return delta
 
-def rho_of_req(a, th0, req, mbar=0):
-    varphis = np.linspace(-180,179,360)*np.pi/180.
+def rho_of_req(a, th0, req, mbar=0, varphis=np.linspace(-180,179,360)*np.pi/180):
 
     # bounding ranges eyeballed from Gralla+Lupsasca Fig 6
     if mbar==0:

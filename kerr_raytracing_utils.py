@@ -217,31 +217,66 @@ class Geodesics(object):
         #hf.create_dataset('frac_orbits',data=n_tot)
         hf.close()
         
-    def get_dataset(self, num_alpha, num_beta):
-        r = self.r_s.reshape(-1, num_alpha, num_beta).T
-        theta = self.th_s.reshape(-1, num_alpha, num_beta).T
-        phi = self.ph_s.reshape(-1, num_alpha, num_beta).T
-        dataset = xr.Dataset(
+    def get_dataset(self, num_alpha=None, num_beta=None, E=1.0, M=1.0):
+        r = self.r_s.T
+        theta = self.th_s.T
+        phi = self.ph_s.T
+        t = self.t_s.T
+        affine = self.sig_s.T
+        mino = self.tausteps.T
+        alpha = np.atleast_1d(self.alpha).T
+        beta = np.atleast_1d(self.beta).T
+        
+        coords = {'pix': range(len(alpha)), 'alpha': ('pix', alpha), 'beta': ('pix', beta)}
+        dims = ['pix', 'geo']
+
+        # reshape dataset to a shape of an image
+        if (num_alpha is not None) and (num_beta is not None):
+            r = self.r_s.reshape(-1, num_alpha, num_beta).T
+            theta = self.th_s.reshape(-1, num_alpha, num_beta).T
+            phi = self.ph_s.reshape(-1, num_alpha, num_beta).T
+            t = self.t_s.reshape(-1, num_alpha, num_beta).T
+            affine = self.sig_s.reshape(-1, num_alpha, num_beta).T
+            mino = self.tausteps.reshape(-1, num_alpha, num_beta).T
+            coords = {'alpha': alpha.reshape(num_alpha, num_beta)[:, 0],
+                      'beta': beta.reshape(num_alpha, num_beta)[0]}
+            dims = ['beta', 'alpha', 'geo']
+
+        geos = xr.Dataset(
             data_vars = {
                 'spin': self.a,
                 'inc': self.th_o,
                 'r_o': self.r_o,
-                't': (['beta', 'alpha', 'geo'], self.t_s.reshape(-1, num_alpha, num_beta).T),
-                'affine': (['beta', 'alpha', 'geo'], self.sig_s.reshape(-1, num_alpha, num_beta).T),
-                'mino': (['beta', 'alpha', 'geo'], self.tausteps.reshape(-1, num_alpha, num_beta).T),
-                'r': (['beta', 'alpha', 'geo'], r),
-                'theta': (['beta', 'alpha', 'geo'], theta),
-                'phi': (['beta', 'alpha', 'geo'], phi),
-                'x': (['beta', 'alpha', 'geo'],  r * np.cos(phi) * np.sin(theta)),
-                'y': (['beta', 'alpha', 'geo'],  r * np.sin(phi) * np.sin(theta)),
-                'z': (['beta', 'alpha', 'geo'],  r * np.cos(theta)),
+                't': (dims, t),
+                'affine': (dims, affine),
+                'mino': (dims, mino),
+                'r': (dims, r),
+                'theta': (dims, theta),
+                'phi': (dims, phi),
+                'x': (dims,  r * np.cos(phi) * np.sin(theta)),
+                'y': (dims,  r * np.sin(phi) * np.sin(theta)),
+                'z': (dims,  r * np.cos(theta)),
             },
-            coords = {
-               'alpha': self.alpha.reshape(num_alpha, num_beta)[:, 0],
-               'beta': self.beta.reshape(num_alpha, num_beta)[0]
-            }
+            coords = coords
         )
-        return dataset
+        
+        Delta = geos.r**2 + geos.spin**2 - 2*M*geos.r
+        Sigma = geos.r**2 + geos.spin**2*np.cos(geos.theta)**2
+        Xi = (geos.r**2 + geos.spin**2)**2 - geos.spin**2*Delta*np.sin(geos.theta)**2
+        omega = 2 * geos.spin * M * geos.r / Xi
+        
+        lam = -geos.alpha * np.sin(geos.inc)
+        eta = (geos.alpha**2 - geos.spin**2) * np.cos(geos.inc)**2 + geos.beta**2
+        R = (geos.r**2 + geos.spin**2 - geos.spin*lam)**2 - Delta * (eta + (lam - geos.spin)**2)
+
+        # Clip small values
+        R = R.where(np.abs(R) > 1e-10).fillna(0.0)
+        Theta = eta + geos.spin**2*np.cos(geos.theta)**2 - lam**2 / np.tan(geos.theta)**2
+        dtau = xr.concat((xr.DataArray(0), geos.mino.diff('geo')), dim='geo')
+
+        geos = geos.assign(dtau=dtau, Sigma=Sigma, Delta=Delta, Xi=Xi, omega=omega, M=M, E=E, lam=lam, eta=eta, R=R, Theta=Theta)
+    
+        return geos
 
 def angular_turning(a, th_o, lam, eta):
     """Calculate angular turning theta_pm points for a geodisic with conserved (lam,eta)"""
