@@ -61,7 +61,7 @@ def raytrace_ana(a=SPIN,
     # checks
     if not (isinstance(a,float) and (0<=np.abs(a)<1)):
         raise Exception("|a| should be a float in range [0,1)")
-    if (a<0):
+    if (a<0) and verbose:
         print("WARNING a<0! Not fully verified!")
     if not (isinstance(r_o,float) and (r_o>=100)):
         raise Exception("r_o should be a float >= 100")
