@@ -266,7 +266,7 @@ class Geodesics(object):
         omega = 2 * geos.spin * M * geos.r / Xi
         
         lam = -geos.alpha * np.sin(geos.inc)
-        eta = (geos.alpha**2 - geos.spin**2) * np.cos(geos.inc)**2 + geos.beta**2
+        eta = geos.beta**2 + (geos.alpha**2 - geos.spin**2) * np.cos(geos.inc)**2
         R = (geos.r**2 + geos.spin**2 - geos.spin*lam)**2 - Delta * (eta + (lam - geos.spin)**2)
 
         # Clip small values

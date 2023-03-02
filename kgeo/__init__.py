@@ -13,4 +13,5 @@ from builtins import str
 from builtins import range
 from builtins import object
 
-from . import kerr_raytracing_utils, kerr_raytracing_ana, kerr_raytracing_num, scipy_ellip_binding, equatorial_lensing, equatorial_image
+from . import kerr_raytracing_utils, kerr_raytracing_ana, kerr_raytracing_num, scipy_ellip_binding, equatorial_lensing, equatorial_images, bfields, velocities, emissivities
+from .kerr_raytracing_ana import raytrace_ana
